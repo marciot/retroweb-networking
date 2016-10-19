@@ -1,0 +1,110 @@
+<script src="unit-test-functions.js"></script>
+<script src="../js/retroweb-network.js"></script>
+<script src="../js/third-party/peerjs/peer.min.js"></script>
+
+<script>
+	var p1, p2, p3, pM, expected, callback;
+
+	function strToArray(str) {
+		var array = new ArrayBuffer(str.length);
+		var bytes = new Uint8Array(array);
+		for(var i = 0; i < str.length; i++) {
+			bytes[i] = str.charCodeAt(i);
+		}
+		return bytes;
+	}
+
+	function arrayToStr(array) {
+		var str = "";
+		for(var i = 0; i < array.length; i++) {
+			str += String.fromCharCode(array[i]);
+		}
+		return str;
+	}
+
+	var net1 = new RetroWeb.BinarySwitchedNetwork("LocalTalk", RetroWeb.peerJSConfig, function(d,s,f) {p1 = {d:d,s:s,f:f};});
+	var net2 = new RetroWeb.BinarySwitchedNetwork("LocalTalk", RetroWeb.peerJSConfig, function(d,s,f) {p2 = {d:d,s:s,f:f};});
+	var net3 = new RetroWeb.BinarySwitchedNetwork("LocalTalk", RetroWeb.peerJSConfig, function(d,s,f) {p3 = {d:d,s:s,f:f};});
+
+	net1.broadcastId = 0xFF;
+	net2.broadcastId = 0xFF;
+	net3.broadcastId = 0xFF;
+
+	net1.joinRoom();
+	net2.joinRoom();
+	net3.joinRoom();
+
+	function broadcastTest() {
+		net1.sendFrame(0xFF, 0x01, strToArray("Broadcast1"));
+		net2.sendFrame(0xFF, 0x02, strToArray("Broadcast2"));
+		setTimeout(directedTest, 1000);
+	}
+
+	function broadcastCheck() {
+		assertEquals('strToArray("Hello").length', '5');
+		assertEquals('arrayToStr(strToArray("Hello"))', '"Hello"');
+
+		assertEquals('p1.f.length', 10);
+		assertEquals('p2.f.length', 10);
+		assertEquals('p3.f.length', 10); // Either Broadcast1 or Broadcast2
+
+		assertEquals('arrayToStr(p1.f)', '"Broadcast2"');
+		assertEquals('arrayToStr(p2.f)', '"Broadcast1"');
+	}
+
+	function directedTest() {
+		broadcastCheck();
+		console.log("directedTest");
+		expected = 2;
+		net1.sendFrame(0x02, 0x01, strToArray("Directed1"));
+		net2.sendFrame(0x01, 0x02, strToArray("Directed2"));
+		setTimeout(monitoringStartupTest, 1000);
+	}
+
+	function directedCheck() {
+		assertEquals('p1.f.length', 9);
+		assertEquals('p2.f.length', 9);
+		assertEquals('p3.f.length', 10); // Should still be Broadcast1 or Broadcast2
+		assertEquals('arrayToStr(p1.f)', '"Directed2"');
+		assertEquals('arrayToStr(p2.f)', '"Directed1"');
+	}
+
+	function monitoringStartupTest() {
+		directedCheck();
+		console.log("monitoringStartupTest");
+		net3.enableMonitoring();
+		setTimeout(monitoringTest, 5000);
+	}
+
+	function monitoringTest() {
+		console.log("monitoringTest");
+		net1.sendFrame(0x02, 0x01, strToArray("Snooped"));
+		setTimeout(monitoringBroadcastTest, 1000);
+	}
+
+	function monitoringCheck() {
+		assertEquals('arrayToStr(p1.f)', '"Directed2"');
+		assertEquals('arrayToStr(p2.f)', '"Snooped"');
+		assertEquals('arrayToStr(p3.f)', '"Snooped"');
+	}
+
+	function monitoringBroadcastTest() {
+		monitoringCheck();
+		console.log("monitoringBroadcastTest");
+		net1.sendFrame(0xFF, 0x01, strToArray("Broadcast"));
+		setTimeout(summarizeResults, 1000);
+	}
+
+	function monitoringBroadcastCheck() {
+		assertEquals('arrayToStr(p1.f)', '"Broadcast"');
+		assertEquals('arrayToStr(p2.f)', '"Broadcast"');
+		assertEquals('arrayToStr(p3.f)', '"Broadcast"');
+	}
+
+	function summarizeResults() {
+		monitoringBroadcastCheck();
+		summarize();
+	}
+
+	setTimeout(broadcastTest, 5000);
+</script>

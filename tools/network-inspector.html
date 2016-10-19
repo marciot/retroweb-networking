@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>Network Inspector</title>
+    <style>
+        body{
+            font-family: Helvetica, Arial, sans-serif;
+        }
+        
+        #container {
+            margin: 15px auto 20px auto;
+        }
+        
+        button, input {
+            margin-top:    5px;
+            margin-bottom: 5px;
+        }
+        
+        button {
+            margin-left: 105px;
+        }
+        
+        label {
+            font-weight: bold;
+            display:     inline-block;
+            width:       100px;
+            text-align:  right;
+            padding-right: 5px;
+        }
+        
+        table {
+            border-collapse: collapse;
+            border: 1px solid black;
+        }
+        
+        th, td {
+            padding: 3px;
+        }
+        
+        #packetCapture {
+        }
+        
+        .capture {
+            font-size:   small;
+            font-family: monospace;
+            width:       100%;
+            border:      1px solid black;
+        }
+        
+        .capture span {
+            display: inline-block;
+            min-width: 5%;
+        }
+        
+        span.etherSrc {
+            color:     green;
+            min-width: 3%;
+        }
+        
+        span.etherDst {
+            min-width: 3%;
+            color:     blue;
+        }
+        
+        span.etherType {
+            color:     blue;
+            min-width: 4%;
+        }
+        
+        span.pupType {
+            color:     red;
+            min-width: 4%;
+        }
+        
+        span.pupId {
+            color: orange;
+            min-width: 6%;
+        }
+        
+        span.dstHost {
+            color:     blue;
+            min-width: 3%;
+        }
+        
+        span.dstNet {
+            color:     blue;
+            min-width: 3%;
+        }
+        
+        span.dstSock {
+            color:     blue;
+            min-width: 7%;
+        }
+        
+        span.srcHost {
+            color:     green;
+            min-width: 3%;
+        }
+        
+        span.srcNet {
+            color:     green;
+            min-width: 3%;
+        }
+        
+        span.srcSock {
+            color:     green;
+            min-width: 7%;
+        }
+        
+        span.payloadHex {
+            min-width: 26%;
+            overflow: auto;
+        }
+        
+        span.payloadStr {
+            min-width: 25%;
+            overflow: auto;
+        }
+    </style>
+
+    <script src="../js/third-party/peerjs/peer.min.js"></script>
+    <script src="../js/retroweb-network.js"></script>
+    <script src="../js/frame-utilities.js"></script>
+    <script src="../js/network-inspector.js"></script>
+    <script src="../alto/pup-services.js"></script>
+    <script src="../alto/pup-services-mazewar.js"></script>
+</head>
+<body>
+    <div id="container">
+        Please select a unique network ID for the inspector, click "Start Inspector" and then leave this window open while running one or more instances of the emulator
+
+        <div class="controls">
+        <p>
+            <label>Network ID</label><input type="number" id="hostId" size="2" min="1" max="255"><br>
+            <button id="startInspectorButton" onclick="startInspector()">Start Inspector</button>
+        </p>
+        <p>
+            <button onclick="peerList.refresh()">Refresh Peers</button>
+            <button onclick="peerList.startPacketCapture()">Begin Capture</button>
+        </p>
+        </div>
+        
+        <table id="peerList">
+        </table>
+        
+        <div id="packetHeading" class="capture"></div>
+        <div id="packetCapture" class="capture"></div>
+    </div>
+    <script>
+        /* Suggest a random hostId */
+        const ETHERNET_ADDR_MIN       = 0x01;
+        const ETHERNET_ADDR_MAX       = 0xFF;
+
+        var hostIdField = document.getElementById("hostId");
+        hostIdField.value = Math.floor(Math.random() * (ETHERNET_ADDR_MAX - ETHERNET_ADDR_MIN)) + ETHERNET_ADDR_MIN;
+
+        function gotNetworkPacket(dst, src, frame) {
+            
+        }
+        
+        function stateChangedCallback(state) {
+            document.getElementById("startInspectorButton").innerText = state;
+        }
+        
+        var inspector = new RetroWeb.NetworkInspector(
+            document.getElementById("packetHeading"),
+            document.getElementById("packetCapture")
+        );
+        
+        var mazeService = new RetroWeb.PupMazeWarServices();
+        inspector.addService(mazeService);
+                
+        function startInspector() {
+            function stateChangedCallback(state) {
+                document.getElementById("startInspectorButton").innerText = state;
+            }
+            inspector.startInspector(hostIdField.value, stateChangedCallback);
+            hostIdField.disabled = true;
+        }
+        
+        peerList = new class {
+            constructor() {
+                this.list = document.getElementById("peerList");
+            }
+        
+            clear() {
+                this.list.innerHTML = "<tr><th>&nbsp;</th><th>Peer ID</th><th>Last Used Address</th></tr>";
+            }
+        
+            refresh() {
+                this.clear();
+                
+                var peers = inspector.getPeers();
+                for(var i = 0; i < peers.length; i++) {
+                    var tr = document.createElement("tr");
+                    
+                    var td = document.createElement("td");
+                    var btn = document.createElement("input");
+                    btn.type = "checkbox";
+                    btn.id = "inspect_" + peers[i];
+                    td.appendChild(btn);
+                    tr.appendChild(td);
+                    
+                    var td = document.createElement("td");
+                    td.innerText = peers[i];
+                    tr.appendChild(td);
+                    
+                    var td = document.createElement("td");
+                    td.innerText = inspector.getNodeIdForPeer(peers[i]);
+                    tr.appendChild(td);
+                    
+                    this.list.appendChild(tr);
+                }
+                if(peers.length == 0) {
+                    this.list.innerHTML += "<tr><td colspan=3>No peers connected</td></tr>";
+                }
+            }
+            
+            startPacketCapture() {
+                var peers = inspector.getPeers();
+                for(var i = 0; i < peers.length; i++) {
+                    var checked = document.getElementById("inspect_" + peers[i]).checked;
+                    if(checked) {
+                        inspector.enableMonitoring(peers[i]);
+                    }
+                }
+            }
+        };
+        
+        capture = new class {
+            constructor() {
+                document.getElementById("packetCapture").addEventListener("click", this.packetClick.bind(this));
+            }
+            
+            selectPayloadByte(spanHex, spanStr, byteOffset, which) {
+                window.getSelection().removeAllRanges();
+                
+                switch(which) {
+                    case 3:
+                        // Select the hex byte
+                        var hexNode = spanHex.childNodes[0];
+                        var r = document.createRange();
+                        r.setStart(hexNode, byteOffset*2);
+                        r.setEnd(hexNode,   byteOffset*2 + 2);
+                        window.getSelection().addRange(r);
+                        break;
+                    case 4:
+                        // Select the corresponding character
+                        var strNode = spanStr.childNodes[0];
+                        var r = document.createRange();
+                        r.setStart(strNode, byteOffset);
+                        r.setEnd(strNode,   byteOffset + 1);
+                        window.getSelection().addRange(r);
+                        break;
+                    case 1:
+                        this.selectPayloadByte(spanHex, spanStr, byteOffset, 3);
+                        window.setTimeout(
+                            this.selectPayloadByte.bind(this, spanHex, spanStr, byteOffset, 4),
+                            250);
+                        break;
+                    case 2:
+                        this.selectPayloadByte(spanHex, spanStr, byteOffset, 4);
+                        window.setTimeout(
+                            this.selectPayloadByte.bind(this, spanHex, spanStr, byteOffset, 3),
+                            250);
+                        break;
+                }
+            }
+            
+            packetClick(e) {
+                var selection = window.getSelection().focusOffset - 1;
+                switch(e.target.className) {
+                    case "payloadHex":
+                        this.selectPayloadByte(e.target, e.target.nextSibling, selection / 2, 1);
+                        break;
+                    case "payloadStr":
+                        this.selectPayloadByte(e.target.previousSibling, e.target, selection, 2);
+                        break;
+                }
+            }
+        };
+        
+         
+        function packetClick(e) {
+            console.log(e.target.className);
+            
+        }
+        
+    </script>
+</body>
+</html>
