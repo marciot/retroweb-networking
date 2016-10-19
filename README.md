@@ -16,19 +16,19 @@ computer.
 
 # How does it work?
 
-This library uses [PeerJS](http://http://peerjs.com) for establishing one-to-one
+This library uses [PeerJS](http://peerjs.com) for establishing one-to-one
 connections between pairs of participants. This library builds on top of that capability
 to create a many-to-many mesh network between more than two participants. This mesh
 network simulates a shared medium that can carry binary packets, supports data link
 addressing and broadcast packets among emulated computers.
 
 When paired with an appropriate emulator, this virtual data link can carry vintage
-network protocols such as legacy Ethernet packets (for emulated Xerox Alto computers)
-or LocalTalk (for emulated Macintosh computers) and enable multi-player gaming.
+network protocols such as legacy Ethernet (for emulated Xerox Alto computers) or
+LocalTalk (for emulated Macintosh computers) and enable multi-player gaming.
 
 ## Related Projects:
 
-This code is used in the following projects:
+This code has been developed to support the following projects:
 * https://github.com/marciot/retroweb-vintage-computer-museum
 * https://github.com/marciot/mazewar-vr
 * https://github.com/sethm/ContrAltoJS
