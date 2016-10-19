@@ -34,4 +34,4 @@ This code is used in the following projects:
 * https://github.com/sethm/ContrAltoJS
 
 
-[logo]: https://github.com/marciot/retroweb-networking/docs/diagram.png "A overview of the library"
+[logo]: https://github.com/marciot/retroweb-networking/raw/master/docs/diagram.png "A overview of the library"
