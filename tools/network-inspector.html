@@ -124,7 +124,6 @@
     <script src="../js/frame-utilities.js"></script>
     <script src="../js/network-inspector.js"></script>
     <script src="../alto/pup-services.js"></script>
-    <script src="../alto/pup-services-mazewar.js"></script>
 </head>
 <body>
     <div id="container">
@@ -167,9 +166,6 @@
             document.getElementById("packetHeading"),
             document.getElementById("packetCapture")
         );
-        
-        var mazeService = new RetroWeb.PupMazeWarServices();
-        inspector.addService(mazeService);
                 
         function startInspector() {
             function stateChangedCallback(state) {

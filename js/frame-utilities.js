@@ -55,7 +55,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
         
         set hex(str) {
             for(var i = 0; i < str.length; i += 2) {
-                this.byte = str.charCodeAt(parseInt(str.substr(i, 2), 16));
+                this.byte = parseInt(str.substr(i, 2), 16);
             }
         }
 
