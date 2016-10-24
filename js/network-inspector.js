@@ -39,66 +39,53 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
             );
 
             this.network.joinRoom();
+
+            var me = this;
+            this.network.addEventListener("allPeersConnected", function() {
+                console.log("Sending request to monitor connections");
+                me.network.enableMonitoring();
+            });
         }
-        
+
         getPeers() {
             return this.network.peers;
         }
-        
+
         getNodeIdForPeer(peer) {
             return this.network.peerMap.peerToNodeId(peer);
         }
-        
+
         monitorCallback(dst, src, frame) {
             var obj = this.decoder.decodeFrame(frame);
             this.decodeService(obj);
             this.printFrame(obj, frame);
         }
-        
+
         decodeService(requestObj) {
             for(var i = 0; i < this.services.length; i++) {
                 var srvc = this.services[i];
                 srvc.provideService.call(srvc, requestObj);
             }
         }
-        
+
         enableMonitoring(peer) {
             this.network.enableMonitoring(peer);
         }
-        
+
         printFrame(obj, frame) {
-            /*this._info(
-                this._nodeStr(obj.srcId) + " -> " + this._nodeStr(obj.dstId),
-                "PUPType:", obj.pupType.toString(8),
-                "Id:", obj.pupIdentifier,
-                "dstNetHostSock:",
-                    obj.dstNet.toString(8),
-                    obj.dstHost.toString(8), 
-                    obj.dstSock.toString(8), 
-                "srcNetHostSock:",
-                    obj.srcNet.toString(8),
-                    obj.srcHost.toString(8), 
-                    obj.srcSock.toString(8),
-                "Payload: ", namespace.frameDump(
-                    frame,
-                    obj.payloadOffset,
-                    obj.checksumOffset
-                )
-            );*/
             this._info(namespace.frameDump(
                     frame,
                     obj.payloadOffset,
                     obj.checksumOffset
             ));
-            
-            
+
             function addField(el, className, text) {
                 var s = document.createElement("span");
                 s.className = className;
                 s.innerHTML = text;
                 el.appendChild(s);
             }
-            
+
             if(this.dumpHtmlElement) {
                 var payload = this.frameToString(
                     frame,
@@ -125,7 +112,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
                 this.dumpHtmlElement.appendChild(p);
             }
         }
-        
+
         frameToString(frame, start, end) {
             var obj = {
                 hex: "",
@@ -141,7 +128,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
             }
             return obj;
         }
-    
+
         addHTMLHeading(p) {
             function addHeading(el, className, name) {
                 var s = document.createElement("span");
@@ -149,7 +136,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
                 s.innerHTML = name || className;
                 el.appendChild(s);
             }
-            
+
             addHeading(p, "etherSrc", "src");
             addHeading(p, "etherDst", "dst");
             addHeading(p, "pupType",  "type");
@@ -163,17 +150,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
             addHeading(p, "payloadHex");
             addHeading(p, "payloadStr");
         }
-        
+
         _info() {
             if(this.verbose) {
                 console.log.apply(console, arguments);
             }
         }
-        
+
         _nodeStr(nodeId) {
             return ((nodeId !== ETH_V1_BROADCAST_ADDR) ? nodeId.toString(8) : "all");
         }
-        
+
         addService(service) {
             this.services.push(service);
         }

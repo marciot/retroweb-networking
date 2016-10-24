@@ -28,9 +28,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
             this.peerOptions                = peerOptions;
             this.networkDataCallback        = networkDataCallback;
             this.stateChangedCallback       = stateChangedCallback;
-            this.verbose                    = true;
+            this.verbose                    = false;
             this.peerPrefix                 = "retroweb_";
             this.reset();
+
+            this.eventListeners = {
+                allPeersConnected:   []
+            };
         }
 
         reset() {
@@ -40,6 +44,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
             }
             this.joinInitiated              = false;
             this.isJoined                   = false;
+            this.fullyConnected             = false;
             this.isMaster                   = false;
             this.roomId                     = null;
             this.masterId                   = null;
@@ -88,8 +93,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
             // Initiate connection to master
             function connectedToMaster() {
                 me._info("retroweb-network: I am member of the network. My id is", me.myPeerId);
-                me._setState('joined');
-                me.isJoined = true;
             }
             this._info("retroweb-network: Trying to connect to master", this.masterId);
             this._processConnection(connectedToMaster, this.peer.connect(this.masterId));
@@ -125,6 +128,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
                 if(onceJoinedCallback) {
                     onceJoinedCallback();
                 }
+                me._checkIfFullyConnected();
             }
 
             this.roomId    = roomId;
@@ -140,11 +144,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
                 // As the master I am responsible for broadcasting the
                 // peer list when a new peer joins the network.
                 me._sendPeerList();
+                me._checkIfFullyConnected();
             }
             this.peer.on('connection', this._processConnection.bind(this, connectionOpenFunc));
         }
 
         _processConnection(callback, newConnection) {
+            this.fullyConnected = false;
             var peer = newConnection.peer;
             var me = this;
             function openCallback() {
@@ -163,8 +169,24 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
         }
 
         _checkIfFullyConnected() {
-            if(this.peerList && this.peerList.length === Object.keys(this.connections).length) {
-                console.log("All peers connected");
+            var participantIsFullyConnected = this.peerList &&
+                (this.peerList.length === Object.keys(this.connections).length);
+
+            if(this.isMaster || participantIsFullyConnected) {
+                this._info("Network complete. All peers connected.");
+
+                if(!this.isJoined) {
+                    this._setState('joined');
+                    this.isJoined = true;
+                }
+
+                if(!this.fullyConnected) {
+                    this.fullyConnected = true;
+                    this.dispatchEvent("allPeersConnected");
+                }
+            } else {
+                this.fullyConnected = false;
+                this._info("Network incomplete. Waiting for peers to connect.");
             }
         }
 
@@ -183,9 +205,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
         _connectionClosed(peer) {
             this._info("retroweb-network: Connection closed:", peer);
             delete this.connections[peer];
-            if(peer == this.masterId && this.myPeerId == this.peerList[0]) {
-                this._info("retroweb-network: Master closed connection. Promoting myself to master");
-                this._reconnectAsMaster();
+            if(this.peerList) {
+                // Remove peer from peer list
+                var index = this.peerList.indexOf(peer);
+                if(index > -1) {
+                    this.peerList.splice(index, 1);
+                }
+                // Check to see if I need to promote myself to master
+                if(peer == this.masterId && this.myPeerId == this.peerList[0]) {
+                    this._info("retroweb-network: Master closed connection. Promoting myself to master");
+                    this._reconnectAsMaster();
+                }
             }
         }
 
@@ -225,6 +255,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
             if(obj.hasOwnProperty("peerList")) {
                 this._info("retroweb-network: Receiving updated peer list", obj.peerList);
                 this.peerList = obj.peerList;
+                this._checkIfFullyConnected();
                 /* All peers will receive the peerList updates. To avoid two peers from
                  * trying to make redundant connections to each other, we impose a rule
                  * where only a peer with the higher ID connects to the peer with the
@@ -233,7 +264,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
                     return this.myPeerId > peer;
                 }
                 this._connectToPeers(this.peerList, connectionSieve.bind(this));
-                this._checkIfFullyConnected();
             } else {
                 this.receivedNetworkObject(peer, obj);
             }
@@ -283,6 +313,16 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
         _error() {
             console.log.apply(console, arguments);
+        }
+
+        addEventListener(eventStr, callback) {
+            this.eventListeners[eventStr].push(callback);
+        }
+
+        dispatchEvent(eventStr, ...args) {
+            for(var i = 0; i < this.eventListeners[eventStr].length; i++) {
+                this.eventListeners[eventStr][i].apply(null, args);
+            }
         }
     };
 
@@ -392,10 +432,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
         }
 
         _setForwardMode(peer, state) {
-            if (state && confirm('A peer is requesting to monitor all communications. Allow?')) {
-                this.forwardingPeer = peer;
-            } else {
+            if (!state) {
                 this.forwardingPeer = null;
+            } else if(
+                peer !== this.forwardingPeer
+                && confirm('A peer is requesting to monitor all communications. Allow?')
+            ) {
+                this.forwardingPeer = peer;
             }
         }
 

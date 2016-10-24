@@ -134,15 +134,7 @@
             <label>Network ID</label><input type="number" id="hostId" size="2" min="1" max="255"><br>
             <button id="startInspectorButton" onclick="startInspector()">Start Inspector</button>
         </p>
-        <p>
-            <button onclick="peerList.refresh()">Refresh Peers</button>
-            <button onclick="peerList.startPacketCapture()">Begin Capture</button>
-        </p>
         </div>
-        
-        <table id="peerList">
-        </table>
-        
         <div id="packetHeading" class="capture"></div>
         <div id="packetCapture" class="capture"></div>
     </div>
@@ -174,55 +166,6 @@
             inspector.startInspector(hostIdField.value, stateChangedCallback);
             hostIdField.disabled = true;
         }
-        
-        peerList = new class {
-            constructor() {
-                this.list = document.getElementById("peerList");
-            }
-        
-            clear() {
-                this.list.innerHTML = "<tr><th>&nbsp;</th><th>Peer ID</th><th>Last Used Address</th></tr>";
-            }
-        
-            refresh() {
-                this.clear();
-                
-                var peers = inspector.getPeers();
-                for(var i = 0; i < peers.length; i++) {
-                    var tr = document.createElement("tr");
-                    
-                    var td = document.createElement("td");
-                    var btn = document.createElement("input");
-                    btn.type = "checkbox";
-                    btn.id = "inspect_" + peers[i];
-                    td.appendChild(btn);
-                    tr.appendChild(td);
-                    
-                    var td = document.createElement("td");
-                    td.innerText = peers[i];
-                    tr.appendChild(td);
-                    
-                    var td = document.createElement("td");
-                    td.innerText = inspector.getNodeIdForPeer(peers[i]);
-                    tr.appendChild(td);
-                    
-                    this.list.appendChild(tr);
-                }
-                if(peers.length == 0) {
-                    this.list.innerHTML += "<tr><td colspan=3>No peers connected</td></tr>";
-                }
-            }
-            
-            startPacketCapture() {
-                var peers = inspector.getPeers();
-                for(var i = 0; i < peers.length; i++) {
-                    var checked = document.getElementById("inspect_" + peers[i]).checked;
-                    if(checked) {
-                        inspector.enableMonitoring(peers[i]);
-                    }
-                }
-            }
-        };
         
         capture = new class {
             constructor() {
