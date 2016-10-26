@@ -106,7 +106,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
         // Return as a printable char
         get char() {
             var val = this.byte;
-            if(val >= 37 && val <= 127) {
+            if(val >= 32 && val <= 127) {
                 // Only return printable chars
                 return String.fromCharCode(val);
             } else {
@@ -150,7 +150,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
             var c = frame[i];
             var hexByte = c.toString(16);
             hex += hexByte.length == 2 ? hexByte : '0' + hexByte;
-            str += (c > 31 && c < 128) ? String.fromCharCode(c) : '.';
+            str += (c >= 32 && c <= 127) ? String.fromCharCode(c) : '.';
         }
         return "" + (end - start) + " bytes: " + hex + " " + str;
     }
