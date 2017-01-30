@@ -27,11 +27,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
     const PUP_ETHERTYPE           = parseInt('01000', 8);
 
     namespace.PupDecoder = class {
-        decodePup(frameReader, obj) {       
+        decodePup(frameReader, obj) {
             /* Reference: "Pup: An Internetwork Architecture" by David R. Boggs, John
                 F. Schoch, Edward A. Taft and Robert M. Metcalfe, July 1979, revised
                 October 1979, pp 15
-                
+
                 http://129.69.211.95/pdf/xerox/alto/ethernet/pupArch.pdf
              */
 
@@ -59,7 +59,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
             obj.checksumOffset  = frameReader.offset;
             obj.pupChecksum     = frameReader.word;
-            
+
             frameReader.seek(obj.payloadOffset);
         }
 
@@ -85,13 +85,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
             return obj;
         }
     }
-    
+
     namespace.PupServer = class {
         constructor() {
             this.decoder  = new namespace.PupDecoder();
             this.pupServices = [];
         }
-        
+
         startServices(serverAddress, serverNet, stateChangedCallback) {
             if(typeof serverAddress === "string") {
                 throw "Address is a string";
@@ -112,25 +112,34 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
                 "Alto",
                 RetroWeb.peerJSConfig,
                 gotNetworkPacket.bind(this),
-                function(state) {
+                function(state, info) {
                     if(state === "joined") {
                         me.networkReady();
                     }
-                    stateChangedCallback(state);
-                } 
+                    stateChangedCallback(state, info);
+                }
             );
 
             this.network.joinRoom();
             this.network.broadcastId = ETHERNET_ADDR_BROADCAST;
         }
-        
+
+        stopServices(delayed) {
+            const networkDisconnectDelay = 1000;
+            if(delayed) {
+                window.setTimeout(this.stopServices.bind(this), networkDisconnectDelay);
+            } else {
+                this.network.leaveRoom();
+            }
+        }
+
         networkReady() {
             for(var i = 0; i < this.pupServices.length; i++) {
                 var srvc = this.pupServices[i];
                 srvc.networkReady();
             }
         }
-        
+
         provideService(requestObj) {
             var reply = null;
             for(var i = 0; i < this.pupServices.length; i++) {
@@ -146,13 +155,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
             }
             return reply;
         }
-        
+
         addService(service) {
             this.pupServices.push(service);
-            
+
             service.server = this;
         }
-        
+
         sendFrame(frame) {
             if(this.network) {
                 var dstAddress = frame[0];
@@ -161,7 +170,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
             }
         }
     }
-    
+
     namespace.PupService = class {
         newPupFrame(obj, payloadSize) {
             /* Reference: "Pup Specifications", by Ed Taft and Bob Metcalfe, June 30, 1978
@@ -219,17 +228,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
                 srcSock:       requestObj.dstSock
             }, payloadSize);
         }
-        
+
         provideService(requestObj) {
         }
-        
+
         networkReady() {
         }
-        
+
         sendFrame(frame) {
            this.server.sendFrame(frame);
         }
-        
+
         multicastFrame(frame, addresses) {
             for(var i = 0; i < addresses.length; i++) {
                 var dstHost = addresses[i];

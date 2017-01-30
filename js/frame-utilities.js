@@ -42,17 +42,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
             this.frame[this.index++] = (val & 0x0000FF00) >> 8;
             this.frame[this.index++] = (val & 0x000000FF);
         }
-        
+
         set char(c) {
             this.byte = c.charCodeAt(0);
         }
-        
+
         set str(str) {
             for(var i = 0; i < str.length; i++) {
                 this.byte = str.charCodeAt(i);
             }
         }
-        
+
         set hex(str) {
             for(var i = 0; i < str.length; i += 2) {
                 this.byte = parseInt(str.substr(i, 2), 16);
@@ -66,11 +66,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
         seek(pos) {
             this.index = pos;
         }
-        
+
         get offset() {
             return this.index;
         }
-        
+
         _checkRange() {
             if(this.index >= this.frame.length) {
                 throw "Writing past end of frame";
@@ -99,10 +99,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
             this._checkRange();
             return this.frame[this.index++] << 24 |
                    this.frame[this.index++] << 16 |
-                   this.frame[this.index++] << 8  | 
+                   this.frame[this.index++] << 8  |
                    this.frame[this.index++];
         }
-        
+
         // Return as a printable char
         get char() {
             var val = this.byte;
@@ -113,7 +113,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
                 return ".";
             }
         }
-        
+
         str(len) {
             var str = "";
             for(var i = 0; i < len; i++) {
@@ -129,18 +129,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
         seek(pos) {
             this.index = pos;
         }
-        
+
         get offset() {
             return this.index;
         }
-        
+
         _checkRange() {
             if(this.index >= this.frame.length) {
                 throw "Reading past end of frame";
             }
         }
     }
-    
+
     namespace.frameDump = function(frame, start, end) {
         var hex = "";
         var str = "";
